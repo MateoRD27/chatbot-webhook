@@ -1,0 +1,62 @@
+import logging
+from typing import Dict, Any
+from flask import current_app
+from app.clients.azure_ai_client import AzureAIFoundryClient
+from app.repositories.session_repository import SessionRepository
+
+logger = logging.getLogger(__name__)
+
+def process_dialogflow_request(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    orquesta el flujo validando intenciones memoria y llamando a azure
+    """
+    query_result = payload.get('queryResult', {})
+    
+    intent_name = query_result.get('intent', {}).get('displayName', 'fallback_intent')
+    user_query = query_result.get('queryText', '')
+    parameters = query_result.get('parameters', {})
+    session_id = payload.get('session', 'sesion_desconocida')
+
+    logger.info(f"procesando sesion: {session_id} con intent: {intent_name}")
+    logger.debug(f"parametros de la conversacion: {parameters}")
+
+    # inyeccion de dependencias utilizando configuracion segura de flask
+    session_repo = SessionRepository(
+        redis_url=current_app.config.get('REDIS_URL', 'mock_redis')
+    )
+    azure_client = AzureAIFoundryClient(
+        endpoint=current_app.config.get('AZURE_AI_ENDPOINT', 'mock_endpoint'),
+        api_key=current_app.config.get('AZURE_AI_KEY', 'mock_key')
+    )
+
+    try:
+        # recuperacion de la memoria conversacional
+        thread_id = session_repo.get_thread_id(session_id)
+        
+        if not thread_id:
+            logger.info("sesion sin historial. creando nuevo thread.")
+            thread_id = azure_client.create_new_thread()
+            session_repo.save_thread_id(session_id, thread_id)
+        else:
+            logger.info(f"retomando conversacion del thread: {thread_id}")
+
+        # enrutamiento dinamico basado en el modelo nlu de dialogflow
+        if intent_name == 'fallback_intent' or 'rag' in intent_name.lower():
+            logger.info("activando capa de inteligencia rag en azure")
+            texto_respuesta = azure_client.generate_rag_response(
+                user_query=user_query, 
+                thread_id=thread_id, 
+                context_params=parameters
+            )
+        else:
+            logger.info("resolviendo intencion mediante reglas locales del orquestador")
+            texto_respuesta = f"procesamiento exitoso para la intencion local: {intent_name}"
+
+    except Exception as e:
+        logger.error(f"error en integracion externa: {str(e)}", exc_info=True)
+        texto_respuesta = "nuestro servicio de inteligencia artificial no responde."
+
+    # formato estricto de salida para dialogflow
+    return {
+        "fulfillmentText": texto_respuesta
+    }

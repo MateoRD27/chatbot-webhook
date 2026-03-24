@@ -1,26 +1,30 @@
+# app/services/dialogflow_service.py
 import logging
 from typing import Dict, Any
 from flask import current_app
 from app.clients.azure_ai_client import AzureAIFoundryClient
 from app.repositories.session_repository import SessionRepository
+from app.utils.response_formatter import build_text_response
 
 logger = logging.getLogger(__name__)
 
 def process_dialogflow_request(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
-    orquesta el flujo validando intenciones memoria y llamando a azure
+    orquesta el flujo evaluando la accion de dialogflow y llamando a la ia
     """
     query_result = payload.get('queryResult', {})
     
+    # extraccion de identificadores y datos clave
     intent_name = query_result.get('intent', {}).get('displayName', 'fallback_intent')
+    action_name = query_result.get('action', 'sin_accion')
     user_query = query_result.get('queryText', '')
     parameters = query_result.get('parameters', {})
     session_id = payload.get('session', 'sesion_desconocida')
 
-    logger.info(f"procesando sesion: {session_id} con intent: {intent_name}")
-    logger.debug(f"parametros de la conversacion: {parameters}")
+    logger.info(f"sesion: {session_id} | accion: {action_name} | intent: {intent_name}")
+    logger.debug(f"parametros detectados: {parameters}")
 
-    # inyeccion de dependencias utilizando configuracion segura de flask
+    # inyeccion de dependencias desde la configuracion global
     session_repo = SessionRepository(
         redis_url=current_app.config.get('REDIS_URL', 'mock_redis')
     )
@@ -30,33 +34,32 @@ def process_dialogflow_request(payload: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     try:
-        # recuperacion de la memoria conversacional
+        # 1. gestion de estado (memoria de conversacion)
         thread_id = session_repo.get_thread_id(session_id)
         
         if not thread_id:
-            logger.info("sesion sin historial. creando nuevo thread.")
+            logger.info("sesion nueva. generando identificador de hilo.")
             thread_id = azure_client.create_new_thread()
             session_repo.save_thread_id(session_id, thread_id)
         else:
-            logger.info(f"retomando conversacion del thread: {thread_id}")
+            logger.info(f"retomando conversacion desde el hilo: {thread_id}")
 
-        # enrutamiento dinamico basado en el modelo nlu de dialogflow
-        if intent_name == 'fallback_intent' or 'rag' in intent_name.lower():
-            logger.info("activando capa de inteligencia rag en azure")
+        # 2. enrutamiento dinamico basado en la accion
+        if intent_name == 'Default Fallback Intent' or action_name == 'requiere_rag':
+            logger.info("activando modelo de inteligencia artificial.")
             texto_respuesta = azure_client.generate_rag_response(
                 user_query=user_query, 
                 thread_id=thread_id, 
                 context_params=parameters
             )
+            # retornamos usando el formateador estandarizado
+            return build_text_response(texto_respuesta)
+
         else:
-            logger.info("resolviendo intencion mediante reglas locales del orquestador")
-            texto_respuesta = f"procesamiento exitoso para la intencion local: {intent_name}"
+            # logica por defecto para intenciones que no van a la ia
+            logger.info("resolviendo intencion localmente.")
+            return build_text_response(f"accion ejecutada sin ia: {action_name}")
 
     except Exception as e:
         logger.error(f"error en integracion externa: {str(e)}", exc_info=True)
-        texto_respuesta = "nuestro servicio de inteligencia artificial no responde."
-
-    # formato estricto de salida para dialogflow
-    return {
-        "fulfillmentText": texto_respuesta
-    }
+        return build_text_response("nuestros sistemas de inteligencia artificial experimentan demoras. intenta mas tarde.")

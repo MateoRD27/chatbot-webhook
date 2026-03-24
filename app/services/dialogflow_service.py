@@ -10,21 +10,21 @@ logger = logging.getLogger(__name__)
 
 def process_dialogflow_request(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
-    orquesta el flujo evaluando la accion de dialogflow y llamando a la ia
+    orquesta el flujo evaluando la accion, sanitizando datos y delegando a la ia
     """
     query_result = payload.get('queryResult', {})
     
-    # extraccion de identificadores y datos clave
-    intent_name = query_result.get('intent', {}).get('displayName', 'fallback_intent')
-    action_name = query_result.get('action', 'sin_accion')
-    user_query = query_result.get('queryText', '')
+    # extraccion y sanitizacion basica de los textos de entrada
+    intent_name = query_result.get('intent', {}).get('displayName', 'fallback_intent').strip()
+    action_name = query_result.get('action', 'sin_accion').strip()
+    user_query = query_result.get('queryText', '').strip()
     parameters = query_result.get('parameters', {})
-    session_id = payload.get('session', 'sesion_desconocida')
+    session_id = payload.get('session', 'sesion_desconocida').strip()
 
     logger.info(f"sesion: {session_id} | accion: {action_name} | intent: {intent_name}")
-    logger.debug(f"parametros detectados: {parameters}")
+    logger.debug(f"parametros extraidos de nlu: {parameters}")
 
-    # inyeccion de dependencias desde la configuracion global
+    # inyeccion de dependencias
     session_repo = SessionRepository(
         redis_url=current_app.config.get('REDIS_URL', 'mock_redis')
     )
@@ -34,32 +34,30 @@ def process_dialogflow_request(payload: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     try:
-        # 1. gestion de estado (memoria de conversacion)
+        # 1. gestion de memoria de la conversacion
         thread_id = session_repo.get_thread_id(session_id)
         
         if not thread_id:
-            logger.info("sesion nueva. generando identificador de hilo.")
+            logger.info("sesion nueva detectada. aprovisionando thread.")
             thread_id = azure_client.create_new_thread()
             session_repo.save_thread_id(session_id, thread_id)
         else:
-            logger.info(f"retomando conversacion desde el hilo: {thread_id}")
+            logger.info(f"recuperando contexto del thread: {thread_id}")
 
-        # 2. enrutamiento dinamico basado en la accion
+        # 2. enrutamiento dinamico basado en el contrato de la accion
         if intent_name == 'Default Fallback Intent' or action_name == 'requiere_rag':
-            logger.info("activando modelo de inteligencia artificial.")
+            logger.info("accion requiere_rag validada. consultando motor de ia.")
             texto_respuesta = azure_client.generate_rag_response(
                 user_query=user_query, 
                 thread_id=thread_id, 
                 context_params=parameters
             )
-            # retornamos usando el formateador estandarizado
             return build_text_response(texto_respuesta)
 
         else:
-            # logica por defecto para intenciones que no van a la ia
-            logger.info("resolviendo intencion localmente.")
-            return build_text_response(f"accion ejecutada sin ia: {action_name}")
+            logger.info("ejecutando procesamiento nativo sin ia.")
+            return build_text_response(f"accion procesada de forma segura: {action_name}")
 
     except Exception as e:
-        logger.error(f"error en integracion externa: {str(e)}", exc_info=True)
-        return build_text_response("nuestros sistemas de inteligencia artificial experimentan demoras. intenta mas tarde.")
+        # elevamos el error para que la capa de rutas y opentelemetry lo registren
+        raise RuntimeError(f"error critico en integracion de ia: {str(e)}")

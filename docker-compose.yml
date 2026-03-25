@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  # definicion del servidor de base de datos redis
+  redis_db:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_local_data:/data
+    restart: unless-stopped
+
+volumes:
+  redis_local_data:

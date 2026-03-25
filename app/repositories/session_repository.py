@@ -9,7 +9,6 @@ class SessionRepository:
     gestiona el mapeo entre la sesion de dialogflow y el thread de azure en redis
     """
     def __init__(self, redis_url: str):
-        # conexion a la base de datos real interceptando errores de conexion
         try:
             self.redis_client = redis.from_url(redis_url)
             # enviamos un ping para validar que el servidor esta vivo al iniciar

@@ -1,4 +1,3 @@
-# app/services/dialogflow_service.py
 import logging
 from typing import Dict, Any
 from flask import current_app
@@ -34,7 +33,7 @@ def process_dialogflow_request(payload: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     try:
-        # 1. gestion de memoria de la conversacion
+        # gestion de memoria de la conversacion
         thread_id = session_repo.get_thread_id(session_id)
         
         if not thread_id:
@@ -44,7 +43,7 @@ def process_dialogflow_request(payload: Dict[str, Any]) -> Dict[str, Any]:
         else:
             logger.info(f"recuperando contexto del thread: {thread_id}")
 
-        # 2. enrutamiento dinamico basado en el contrato de la accion
+        # enrutamiento dinamico basado en el contrato de la accion
         if intent_name == 'Default Fallback Intent' or action_name == 'requiere_rag':
             logger.info("accion requiere_rag validada. consultando motor de ia.")
             texto_respuesta = azure_client.generate_rag_response(

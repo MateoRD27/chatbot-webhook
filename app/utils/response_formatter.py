@@ -1,4 +1,3 @@
-# app/utils/response_formatter.py
 
 def build_text_response(text: str) -> dict:
     """

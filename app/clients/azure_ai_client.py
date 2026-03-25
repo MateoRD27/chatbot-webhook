@@ -1,7 +1,5 @@
-# app/clients/azure_ai_client.py
 import logging
 import time
-# from openai import azureopenai # linea real para produccion
 
 logger = logging.getLogger(__name__)
 

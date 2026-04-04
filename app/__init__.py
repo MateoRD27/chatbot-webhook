@@ -3,16 +3,23 @@ import logging
 from flask import Flask, jsonify, request
 from config import Config
 from azure.monitor.opentelemetry import configure_azure_monitor
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+# inicializacion del firewall perimetral basado en la ip entrante
+limiter = Limiter(key_func=get_remote_address)
 
 def create_app(config_class=Config):
     """
-    fabrica de la aplicacion con integracion de opentelemetry para azure
+    fabrica de la aplicacion con integracion de opentelemetry para azure y seguridad ddos
     """
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # configuracion estandar de logs. azure monitor interceptara estos logs
-    # y los enviara a la nube adjuntando el trace_id automaticamente.
+    # conectar el limitador a la aplicacion y a redis
+    limiter.init_app(app)
+
+    # configuracion estandar de logs
     logging.basicConfig(
         level=logging.INFO, 
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -27,7 +34,7 @@ def create_app(config_class=Config):
         except Exception as e:
             logging.error(f"falla al iniciar telemetria: {str(e)}")
 
-    # middleware de seguridad: registra la ip entrante en la telemetria
+    # middleware de auditoria
     @app.before_request
     def before_request():
         logging.info(f"peticion entrante desde ip: {request.remote_addr}")
@@ -47,9 +54,14 @@ def create_app(config_class=Config):
         logging.warning(f"intento de acceso a ruta inexistente 404: {request.path}")
         return jsonify({"error": "ruta no encontrada"}), 404
 
+    # manejador de seguridad corporativa para ataques de saturacion
+    @app.errorhandler(429)
+    def ratelimit_handler(error):
+        logging.warning(f"ataque o saturacion bloqueada por rate limit 429: {request.remote_addr}")
+        return jsonify({"error": "demasiadas peticiones. acceso bloqueado temporalmente."}), 429
+
     @app.errorhandler(Exception)
     def internal_error(error):
-        # opentelemetry enviara la traza completa de este error a tu panel en azure
         logging.error(f"error interno del servidor 500: {str(error)}", exc_info=True)
         fallback = {
             "fulfillmentText": "el sistema esta en mantenimiento. intenta de nuevo mas tarde."

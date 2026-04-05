@@ -1,4 +1,3 @@
-# app/routes/webhook_routes.py
 from flask import Blueprint, request, jsonify, current_app
 import logging
 import secrets 

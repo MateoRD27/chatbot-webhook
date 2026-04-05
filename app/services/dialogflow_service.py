@@ -1,4 +1,3 @@
-# app/services/dialogflow_service.py
 import logging
 from typing import Dict, Any
 from flask import current_app

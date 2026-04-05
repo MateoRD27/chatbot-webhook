@@ -7,3 +7,4 @@ openai==1.13.3
 azure-monitor-opentelemetry==1.6.0
 setuptools==69.5.1
 Flask-Limiter==3.5.0
+pytest==8.1.1

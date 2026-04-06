@@ -1,72 +1,43 @@
 import logging
-import time
+import requests
 
 logger = logging.getLogger(__name__)
 
 class AzureAIFoundryClient:
     """
-    cliente para interactuar con azure ai foundry y consultar la base de conocimiento rag
+    cliente rest para comunicarse con el microservicio de inteligencia artificial.
     """
-    def __init__(self, endpoint: str, api_key: str):
-        self.endpoint = endpoint
-        self.api_key = api_key
-        
-        # --- inicio bloque de produccion ---
-        # self.client = azureopenai(
-        #     azure_endpoint=self.endpoint,
-        #     api_key=self.api_key,
-        #     api_version="2024-02-15-preview"
-        # )
-        # self.assistant_id = "tu_id_de_asistente_en_azure"
-        # --- fin bloque de produccion ---
+    def __init__(self, endpoint: str):
+        self.endpoint = endpoint.rstrip('/')
 
-    def create_new_thread(self) -> str:
+    def generate_rag_response(self, user_query: str, session_id: str) -> str:
         """
-        solicita a azure la creacion de un hilo nuevo para guardar el contexto
+        ejecuta la peticion http delegando el manejo de hilos al agente externo.
         """
-        # --- inicio bloque de produccion ---
-        # thread = self.client.beta.threads.create()
-        # return thread.id
-        # --- fin bloque de produccion ---
+        url = f"{self.endpoint}/chat"
         
-        nuevo_id = f"thread_azure_{int(time.time())}"
-        logger.info(f"nuevo thread simulado: {nuevo_id}")
-        return nuevo_id
-
-    def generate_rag_response(self, user_query: str, thread_id: str, context_params: dict) -> str:
-        """
-        envia la consulta al modelo rag y espera la respuesta generada
-        """
-        # --- inicio bloque de produccion ---
-        # prompt_final = user_query
-        # if context_params:
-        #     prompt_final += f" [contexto adicional: {context_params}]"
-        #
-        # self.client.beta.threads.messages.create(
-        #     thread_id=thread_id, role="user", content=prompt_final
-        # )
-        #
-        # run = self.client.beta.threads.runs.create(
-        #     thread_id=thread_id, assistant_id=self.assistant_id
-        # )
-        #
-        # while run.status != "completed":
-        #     time.sleep(1)
-        #     run = self.client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
-        #     if run.status in ["failed", "cancelled", "expired"]:
-        #         raise exception(f"el modelo de azure fallo. estado final: {run.status}")
-        #
-        # messages = self.client.beta.threads.messages.list(thread_id=thread_id)
-        # return messages.data[0].content[0].text.value
-        # --- fin bloque de produccion ---
-
-        # --- inicio bloque de simulacion (prueba de matriculas) ---
-        logger.info(f"simulando busqueda en base de conocimiento rag. hilo: {thread_id}")
-        time.sleep(1.5) 
+        payload = {
+            "message": user_query,
+            "session_id": session_id
+        }
         
-        query_lower = user_query.lower()
-        if "matricula" in query_lower or "fecha" in query_lower:
-            return "segun el calendario academico oficial, las matriculas para el proximo semestre estan programadas del 15 al 30 de agosto."
+        logger.info(f"Enviando peticion al agente ia para la sesion: {session_id}")
         
-        return f"respuesta dinamica generada por ia para: '{user_query}'"
-        # --- fin bloque de simulacion ---
+        try:
+            # configuramos 115 segundos de timeout para fallar antes que el servidor maestro
+            response = requests.post(url, json=payload, timeout=115)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            if data.get("ok"):
+                logger.info("Respuesta exitosa recibida desde la capa de ia.")
+                return data.get("response", "Respuesta vacia")
+            else:
+                error_msg = data.get("error", "Error desconocido en el agente")
+                logger.error(f"Falla reportada por el agente: {error_msg}")
+                return "Lo siento, el motor de inteligencia tuvo un problema procesando la informacion."
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Caida de red al contactar el microservicio ia: {str(e)}")
+            raise RuntimeError("No se pudo establecer comunicacion con el microservicio agente")

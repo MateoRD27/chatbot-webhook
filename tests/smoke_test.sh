@@ -19,7 +19,7 @@ curl -s -X GET "$base_url/ruta-desconocida"
 echo -e "\n\n3. Simulando ataque con clave falsa (401)..."
 curl -s -X POST "$base_url/webhook" \
 -H "Content-Type: application/json" \
--H "X-Webhook-Token: clave_incorrecta" \
+-H "X-Webhook-Token: Clave_incorrecta" \
 -d '{"queryResult": {"queryText": "Robo de datos"}}'
 
 # 4. escudo perimetral - token ausente
@@ -48,11 +48,11 @@ curl -s -X POST "$base_url/webhook" \
 -H "Content-Type: application/json" \
 -H "X-Webhook-Token: $token" \
 -d '{
-  "responseId": "test-001",
+  "responseId": "Test-001",
   "queryResult": {
     "queryText": "Hola",
-    "action": "saludar",
-    "intent": {"displayName": "saludo_basico"}
+    "action": "Saludar",
+    "intent": {"displayName": "Saludo_basico"}
   },
   "session": "projects/tesis/sessions/test_001"
 }'
@@ -63,10 +63,10 @@ curl -s -X POST "$base_url/webhook" \
 -H "Content-Type: application/json" \
 -H "X-Webhook-Token: $token" \
 -d '{
-  "responseId": "test-002",
+  "responseId": "Test-002",
   "queryResult": {
     "queryText": "Que es la vida",
-    "action": "input.unknown",
+    "action": "Input.unknown",
     "intent": {"displayName": "Default Fallback Intent"}
   },
   "session": "projects/tesis/sessions/test_002"
@@ -78,13 +78,22 @@ curl -s -X POST "$base_url/webhook" \
 -H "Content-Type: application/json" \
 -H "X-Webhook-Token: $token" \
 -d '{
-  "responseId": "test-003",
+  "responseId": "Test-003",
   "queryResult": {
     "queryText": "Quienes son los profesores de ingenieria de sistemas",
     "action": "requiere_rag",
-    "intent": {"displayName": "consulta_profesores"}
+    "intent": {"displayName": "Consulta_profesores"}
   },
   "session": "projects/tesis/sessions/test_003"
+}'
+
+# 10. estructura incompleta
+echo -e "\n\n10. Simulando estructura incompleta de dialogflow (json sin queryresult)..."
+curl -s -X POST "$base_url/webhook" \
+-H "Content-Type: application/json" \
+-H "X-Webhook-Token: $token" \
+-d '{
+  "session": "projects/tesis/sessions/test_004"
 }'
 
 echo -e "\n\nPruebas finalizadas. el ataque de saturacion (ddos) se deja en pytest para mantener limpia la memoria de desarrollo."

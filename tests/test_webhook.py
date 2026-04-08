@@ -50,7 +50,6 @@ def test_diagnostico_de_salud(client):
     assert data['status'] == 'ok'
 
 def test_metodo_http_no_permitido(client):
-    # verifica que el webhook rechace peticiones get gracias al nuevo handler 405
     response = client.get('/webhook')
     assert response.status_code == 405
 
@@ -105,7 +104,7 @@ def test_proteccion_contra_payload_gigante(client):
 def test_ruta_inexistente(client):
     response = client.get('/ruta-fantasma')
     assert response.status_code == 404
-    assert b"ruta no encontrada" in response.data
+    assert b"Ruta no encontrada" in response.data
 
 def test_payload_vacio_o_incompleto(client):
     response = client.post(
@@ -242,7 +241,6 @@ def test_falla_microservicio_ia_respuesta_corrupta(client):
         assert b"tuvimos un problema procesando tu mensaje" in response.data
 
 def test_falla_interna_del_servidor(client):
-    # el mock ahora se inyecta donde se usa, para que el try-except local lo atrape
     with patch('app.routes.webhook_routes.process_dialogflow_request') as mock_process:
         mock_process.side_effect = Exception("Falla catastrofica de negocio")
         
@@ -255,7 +253,6 @@ def test_falla_interna_del_servidor(client):
                 "X-Webhook-Token": "Mi_token_secreto"
             }
         )
-        # verifica que la app sobrevive devolviendo el fallback local de la ruta
         assert response.status_code == 200
         assert b"tuvimos un problema procesando tu mensaje" in response.data
 
@@ -270,4 +267,4 @@ def test_defensa_ddos_limite_tasa(client):
         
     response = client.post('/webhook', data=payload, headers=headers)
     assert response.status_code == 429
-    assert b"demasiadas peticiones" in response.data
+    assert b"Demasiadas peticiones" in response.data

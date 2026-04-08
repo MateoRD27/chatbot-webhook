@@ -30,14 +30,14 @@ def create_app(config_class=Config):
     if conn_string:
         try:
             configure_azure_monitor(connection_string=conn_string)
-            logging.info("telemetria de azure application insights activada")
+            logging.info("Telemetria de azure application insights activada")
         except Exception as e:
-            logging.error(f"falla al iniciar telemetria: {str(e)}")
+            logging.error(f"Falla al iniciar telemetria: {str(e)}")
 
     # middleware de auditoria
     @app.before_request
     def before_request():
-        logging.info(f"peticion entrante desde ip: {request.remote_addr}")
+        logging.info(f"Peticion entrante desde ip: {request.remote_addr}")
 
     # registro de la capa de rutas
     from app.routes.webhook_routes import webhook_bp
@@ -46,25 +46,31 @@ def create_app(config_class=Config):
     # manejadores de error globales capturados por la telemetria
     @app.errorhandler(400)
     def bad_request_error(error):
-        logging.warning(f"bloqueo por peticion mal formada 400: {error}")
-        return jsonify({"error": "peticion incorrecta"}), 400
+        logging.warning(f"Bloqueo por peticion mal formada 400: {error}")
+        return jsonify({"error": "Peticion incorrecta"}), 400
 
     @app.errorhandler(404)
     def not_found_error(error):
-        logging.warning(f"intento de acceso a ruta inexistente 404: {request.path}")
-        return jsonify({"error": "ruta no encontrada"}), 404
+        logging.warning(f"Intento de acceso a ruta inexistente 404: {request.path}")
+        return jsonify({"error": "Ruta no encontrada"}), 404
+
+    @app.errorhandler(405)
+    def method_not_allowed_error(error):
+        # nuevo escudo para rechazar verbos http incorrectos
+        logging.warning(f"Metodo http no permitido 405: {request.path}")
+        return jsonify({"error": "Metodo no permitido"}), 405
 
     # manejador de seguridad corporativa para ataques de saturacion
     @app.errorhandler(429)
     def ratelimit_handler(error):
-        logging.warning(f"ataque o saturacion bloqueada por rate limit 429: {request.remote_addr}")
-        return jsonify({"error": "demasiadas peticiones. acceso bloqueado temporalmente."}), 429
+        logging.warning(f"Ataque o saturacion bloqueada por rate limit 429: {request.remote_addr}")
+        return jsonify({"error": "Demasiadas peticiones. acceso bloqueado temporalmente."}), 429
 
     @app.errorhandler(Exception)
     def internal_error(error):
-        logging.error(f"error interno del servidor 500: {str(error)}", exc_info=True)
+        logging.error(f"Error interno del servidor 500: {str(error)}", exc_info=True)
         fallback = {
-            "fulfillmentText": "el sistema esta en mantenimiento. intenta de nuevo mas tarde."
+            "fulfillmentText": "El sistema esta en mantenimiento. intenta de nuevo mas tarde."
         }
         return jsonify(fallback), 200 
 

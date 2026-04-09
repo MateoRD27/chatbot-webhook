@@ -1,0 +1,14 @@
+time curl -w "\n\nReloj del sistema: %{time_total}s\n" -X POST "http://localhost:5000/webhook" \
+-H "Content-Type: application/json" \
+-H "X-Webhook-Token: mi_token_super_secreto" \
+-d '{
+  "responseId": "test-velocidad",
+  "queryResult": {
+    "queryText": "Profesores sistemas",
+    "action": "requiere_rag",
+    "intent": {"displayName": "consulta_profesores"}
+  },
+  "session": "projects/tesis/sessions/test_003"
+}'
+
+

@@ -7,6 +7,17 @@ def build_text_response(text: str) -> dict:
         "fulfillmentText": text
     }
 
+def build_event_response(event_name: str) -> dict:
+    """
+    Construye la respuesta para reiniciar el contador de Dialogflow
+    """
+    return {
+        "followupEventInput": {
+            "name": event_name,
+            "languageCode": "es"
+        }
+    }
+
 def build_card_response(text: str, title: str, subtitle: str, button_text: str, button_link: str) -> dict:
     """
     construye una tarjeta interactiva con botones.

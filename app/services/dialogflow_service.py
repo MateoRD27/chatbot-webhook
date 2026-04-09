@@ -45,7 +45,7 @@ def process_dialogflow_request(payload: Dict[str, Any]) -> Dict[str, Any]:
     try:
         intent_lower = intent_name.lower()
         
-        # interceptamos peticiones rag (1ra vez) o los eventos de espera (bucles)
+        # interceptamos peticiones rag (1ra vez) o los eventos de espera 
         if intent_lower == 'default fallback intent' or action_name == 'requiere_rag' or intent_lower == 'intent_espera':
             
             r = redis.from_url(current_app.config.get('REDIS_URL'))

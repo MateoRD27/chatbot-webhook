@@ -72,28 +72,30 @@ curl -s -X POST "$base_url/webhook" \
   "session": "projects/tesis/sessions/test_002"
 }'
 
-# 9. orquestacion exitosa con base de conocimiento especifica
-echo -e "\n\n9. Enviando peticion valida esperada (flujo rag principal)..."
+# 9. Peticion RAG Principal (Dispara el hilo de fondo)
+echo -e "\n\n9. Enviando peticion RAG (Inicia hilo y primer evento)..."
 curl -s -X POST "$base_url/webhook" \
 -H "Content-Type: application/json" \
 -H "X-Webhook-Token: $token" \
 -d '{
-  "responseId": "Test-003",
   "queryResult": {
-    "queryText": "Quienes son los profesores de ingenieria de sistemas",
+    "queryText": "Profesores sistemas",
     "action": "requiere_rag",
-    "intent": {"displayName": "Consulta_profesores"}
+    "intent": {"displayName": "consulta_profesores"}
   },
-  "session": "projects/tesis/sessions/test_003"
+  "session": "projects/tesis/sessions/smoke_test_001"
 }'
 
-# 10. estructura incompleta
-echo -e "\n\n10. Simulando estructura incompleta de dialogflow (json sin queryresult)..."
+# 10. Simulacion de Bucle de Espera (Polling)
+echo -e "\n\n10. Simulando llamada de Dialogflow tras recibir el evento..."
 curl -s -X POST "$base_url/webhook" \
 -H "Content-Type: application/json" \
 -H "X-Webhook-Token: $token" \
 -d '{
-  "session": "projects/tesis/sessions/test_004"
+  "queryResult": {
+    "queryText": "",
+    "intent": {"displayName": "intent_espera"}
+  },
+  "session": "projects/tesis/sessions/smoke_test_001"
 }'
-
 echo -e "\n\nPruebas finalizadas. el ataque de saturacion (ddos) se deja en pytest para mantener limpia la memoria de desarrollo."

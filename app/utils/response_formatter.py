@@ -1,4 +1,3 @@
-
 def build_text_response(text: str) -> dict:
     """
     construye la respuesta estandar de texto plano para dialogflow
@@ -9,7 +8,7 @@ def build_text_response(text: str) -> dict:
 
 def build_event_response(event_name: str) -> dict:
     """
-    Construye la respuesta para reiniciar el contador de Dialogflow
+    construye la respuesta especial para reiniciar el contador de 5s de dialogflow
     """
     return {
         "followupEventInput": {
@@ -21,8 +20,6 @@ def build_event_response(event_name: str) -> dict:
 def build_card_response(text: str, title: str, subtitle: str, button_text: str, button_link: str) -> dict:
     """
     construye una tarjeta interactiva con botones.
-    esta funcion queda lista por si la inteligencia artificial decide 
-    enviar enlaces enriquecidos en el futuro.
     """
     return {
         "fulfillmentText": text,
